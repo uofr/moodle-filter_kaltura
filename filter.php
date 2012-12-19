@@ -32,10 +32,45 @@ class filter_kaltura extends moodle_text_filter {
     public static $k_session = '';
 
     public static $player = '';
-    public static $courseid = 0; 
+    public static $courseid = 0;
+
+    public static $kaltura_mobile_js_init = false;
+    public static $mobile_theme_used = false;
+    public static $player_number = 0;
+
+
+    /** This function resolves KALDEV-201
+     *
+     */
+    public function setup($page, $context) {
+        global $THEME;
+
+        // Determine if the mobile theme is being used
+        $theme = get_selected_theme_for_device_type();
+
+        if (0 == strcmp($theme, 'mymobile')) {
+            self::$mobile_theme_used = true;
+        }
+
+
+        if (empty(self::$kaltura_mobile_js_init)) {
+
+            if (local_kaltura_has_mobile_flavor_enabled() && local_kaltura_get_enable_html5()) {
+
+                $uiconf_id = local_kaltura_get_player_uiconf('player_filter');
+                $js_url = new moodle_url(local_kaltura_htm5_javascript_url($uiconf_id));
+                $js_url_frame = new moodle_url('/local/kaltura/js/frameapi.js');
+
+                $page->requires->js($js_url, false);
+                $page->requires->js($js_url_frame, false);
+
+            }
+            self::$kaltura_mobile_js_init = true;
+        }
+    }
 
     function filter($text, array $options = array()) {
-        
+
         global $CFG, $PAGE, $DB;
 
         // Clear video list
@@ -56,21 +91,12 @@ class filter_kaltura extends moodle_text_filter {
         if (!empty($CFG->filter_kaltura_enable)) {
 
             // Get the filter player ui conf id
-            self::$player = get_player_uiconf('player_filter');
-        
+            self::$player = local_kaltura_get_player_uiconf('player_filter');
+
             // Get the course id of the current context
             self::$courseid = get_courseid_from_context($PAGE->context);
 
-            if (has_mobile_flavor_enabled() && get_enable_html5()) {
-                $uiconf_id = get_player_uiconf('player_filter');
-                $url = new moodle_url(htm5_javascript_url($uiconf_id));
-                $PAGE->requires->js($url, false);
-                $url = new moodle_url('/local/kaltura/js/frameapi.js');
-                $PAGE->requires->js($url, false);
-
-            }
-
-            $uri = get_host();
+            $uri = local_kaltura_get_host();
             $uri = rtrim($uri, '/');
             $uri = str_replace(array('.', '/', 'https'), array('\.', '\/', 'https?'), $uri);
 
@@ -80,23 +106,27 @@ class filter_kaltura extends moodle_text_filter {
             preg_replace_callback($search, 'update_video_list', $newtext);
 
             try {
-                
-                // Create the the session for viewing of each video detected
-                self::$k_session = generate_kaltura_session(self::$videos);
-    
-                $kaltura = new kaltura_connection();
-                $connection = $kaltura->get_connection(true, 86400);
 
-                // Check if the repository plug-in exists.  Add Kaltura video to 
+                // Create the the session for viewing of each video detected
+                self::$k_session = local_kaltura_generate_kaltura_session(self::$videos);
+
+                $kaltura    = new kaltura_connection();
+                $connection = $kaltura->get_connection(true, KALTURA_SESSION_LENGTH);
+
+                if (!$connection) {
+                    throw new Exception("Unable to connect");
+                }
+
+                // Check if the repository plug-in exists.  Add Kaltura video to
                 // the Kaltura category
-                $enabled  = kaltura_repository_enabled();
+                $enabled  = local_kaltura_kaltura_repository_enabled();
                 $category = false;
 
                 if ($enabled) {
                     require_once($CFG->dirroot.'/repository/kaltura/locallib.php');
 
                    // Create the course category
-                   add_video_course_reference($connection, self::$courseid, self::$videos);
+                   repository_kaltura_add_video_course_reference($connection, self::$courseid, self::$videos);
 
                 }
 
@@ -107,7 +137,7 @@ class filter_kaltura extends moodle_text_filter {
             }
         }
 
-        if (empty($newtext) or $newtext === $text) {
+        if (empty($newtext) || $newtext === $text) {
             // error or not filtered
             unset($newtext);
             return $text;
@@ -137,7 +167,7 @@ function update_video_list($link) {
 function filter_kaltura_callback($link) {
     global $CFG, $PAGE;
 
-    $entry_obj = get_ready_entry_object($link[4], false);
+    $entry_obj = local_kaltura_get_ready_entry_object($link[4], false);
 
     if (empty($entry_obj)) {
         return get_string('unable', 'filter_kaltura');
@@ -153,7 +183,16 @@ function filter_kaltura_callback($link) {
     $entry_obj->height = empty($height) ? $entry_obj->height : $height;
 
     // Generate player markup
-    $markup  = get_kdp_code($entry_obj, filter_kaltura::$player, filter_kaltura::$courseid, filter_kaltura::$k_session);
+    $markup = '';
+
+    filter_kaltura::$player_number++;
+    $uid = filter_kaltura::$player_number . '_' . mt_rand();
+
+    if (!filter_kaltura::$mobile_theme_used) {
+        $markup  = local_kaltura_get_kdp_code($entry_obj, filter_kaltura::$player, filter_kaltura::$courseid, filter_kaltura::$k_session/*, $uid*/);
+    } else {
+        $markup  = local_kaltura_get_kwidget_code($entry_obj, filter_kaltura::$player, filter_kaltura::$courseid, filter_kaltura::$k_session/*, $uid*/);
+    }
 
 return <<<OET
 $markup
