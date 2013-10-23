@@ -15,12 +15,13 @@
 /**
  * Version file
  *
- * @package    Filter
- * @subpackage Kaltura
+ * @package    filter_kaltura
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2012121903;
-$plugin->release = 'Kaltura release 3.0.95 (RL: 2.2.1.2)';
+$plugin->version = 2012121905;
+$plugin->release = 'Kaltura release 3.0.97 (RL: 2.2.1.3)';
+$plugin->requires = 2011120500;
+$plugin->maturity = MATURITY_STABLE;
