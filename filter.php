@@ -129,12 +129,20 @@ class filter_kaltura extends moodle_text_filter {
             $uri = local_kaltura_get_host();
             $uri = rtrim($uri, '/');
             $uri = str_replace(array('.', '/', 'https'), array('\.', '\/', 'https?'), $uri);
-
-            $search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))\/v\/flash"[^>]*>([^>]*)<\/a>/is';
-
+            
+            // HACK: cunnintr
+            // not matching our urls; change format to match following url pattern
+            // http://kaltura.cc.uregina.ca/index.php/kwidget/wid/_106/uiconf_id/11170236/entry_id/0_k0s5l05s
+            // old value: $search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))\/v\/flash"[^>]*>([^>]*)<\/a>/is';
+            // Note: Also altered the part that matches content within the link, (?!=<\/a>).*? instead of ([^>]*), 
+            // as it originally wouldn't match if the text contained other elements (<span>,<b>, etc)
+            $search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))"[^>]*>(?!=<\/a>).*?<\/a>/is';
+            
+            preg_match($search,$newtext,$matches);
+            
             // Update the static array of videos, so that later on in the code we can create generate a viewing session for each video
             preg_replace_callback($search, 'update_video_list', $newtext);
-
+            
             // Exit the function if the video entries array is empty
             if (empty(self::$videos)) {
                 return $text;
@@ -196,7 +204,7 @@ class filter_kaltura extends moodle_text_filter {
  * This functions adds the video entry id to a static array
  */
 function update_video_list($link) {
-
+    //die(print_r($link,1));
     filter_kaltura::$videos[] = $link[4];
 }
 
