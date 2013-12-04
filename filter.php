@@ -136,7 +136,7 @@ class filter_kaltura extends moodle_text_filter {
             // old value: $search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))\/v\/flash"[^>]*>([^>]*)<\/a>/is';
             // Note: Also altered the part that matches content within the link, (?!=<\/a>).*? instead of ([^>]*), 
             // as it originally wouldn't match if the text contained other elements (<span>,<b>, etc)
-            $search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))"[^>]*>(?!=<\/a>).*?<\/a>/is';
+            $search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))(?:[^"])?.*"[^>]*>(?!=<\/a>).*?<\/a>/is';
             
             preg_match($search,$newtext,$matches);
             
