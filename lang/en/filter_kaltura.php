@@ -20,7 +20,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['filtername'] = 'Kaltura Media';
-$string['enable'] = 'Embed Kaltura Video Links';
-$string['enable_help'] = 'Convert Kaltura video links to embed code';
+$string['filtername'] = 'Kaltura CE Media';
+$string['enable'] = 'Embed Kaltura CE Media Links';
+$string['enable_help'] = 'Convert links to Kaltura CE hosted media into embedded media.';
 $string['unable'] = 'Unable to convert video at this time';
