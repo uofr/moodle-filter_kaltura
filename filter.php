@@ -136,18 +136,27 @@ class filter_kaltura extends moodle_text_filter {
             // old value: $search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))\/v\/flash"[^>]*>([^>]*)<\/a>/is';
             // Note: Also altered the part that matches content within the link, (?!=<\/a>).*? instead of ([^>]*), 
             // as it originally wouldn't match if the text contained other elements (<span>,<b>, etc)
-            $search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))(?:[^"])?.*"[^>]*>(?!=<\/a>).*?<\/a>/is';
+            //$search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))\/v\/flash"[^>]*>([^>]*)<\/a>/is';
+                $search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))[^>]*>([^>]*)<\/a>/is';
+                
+//'/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))(?:[^"])?.*"[^>]?.*>*+(</a>)/is';                
+                
+//            https://kaltura.cc.uregina.ca/index.php/kwidget/wid/_106/uiconf_id/11170249/entry_id/0_xyl5eusc
             
-            preg_match($search,$newtext,$matches);
-            
+//            http://kaltura.cc.uregina.ca/index.php/kwidget/wid/_106/uiconf_id/11170236/entry_id/0_6elrlm6s/v/flash#menu_01.mp3
+//            http://kaltura.cc.uregina.ca/index.php/kwidget/wid/_106/uiconf_id/11170236/entry_id/0_wuhydchy
+
+            //$lmatches = array();
+            //preg_match_all($search,$newtext,$lmatches);
+            //echo '<h1>matches: <pre>'.print_r($lmatches,1).'</pre></h1>';
             // Update the static array of videos, so that later on in the code we can create generate a viewing session for each video
             preg_replace_callback($search, 'update_video_list', $newtext);
-            
+
             // Exit the function if the video entries array is empty
             if (empty(self::$videos)) {
                 return $text;
             }
-
+            //die(print_r(self::$videos,1));
             // Get the filter player ui conf id
             if (empty(self::$player)) {
                 self::$player = local_kaltura_get_player_uiconf('player_filter');
@@ -205,6 +214,7 @@ class filter_kaltura extends moodle_text_filter {
  */
 function update_video_list($link) {
     //die(print_r($link,1));
+    //echo print_r($link,1);
     filter_kaltura::$videos[] = $link[4];
 }
 
