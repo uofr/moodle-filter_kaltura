@@ -255,7 +255,11 @@ function filter_kaltura_callback($link) {
     } else {
         $markup  = local_kaltura_get_kwidget_code($entry_obj, filter_kaltura::$player, filter_kaltura::$courseid, filter_kaltura::$ksession/*, $uid*/);
     }
-
+    
+    $attr = array('class'=>'flex-video');
+    
+    $markup = html_writer::tag('div',$markup,$attr);
+    
 return <<<OET
 $markup
 OET;
