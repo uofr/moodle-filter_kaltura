@@ -25,3 +25,4 @@ $plugin->version = 2014010901;
 $plugin->release = 'Kaltura release 3.1.02 (RL: 2.6.1.1)';
 $plugin->requires = 2013111800;
 $plugin->maturity = MATURITY_STABLE;
+$plugin->component = 'filter_kaltura';
