@@ -26,6 +26,7 @@ class filter_kaltura extends moodle_text_filter {
     // user session string for all videos displayed on the page
     /** @var array $videos - an array of videos that have been rendered on a single page request */
     public static $videos    = array();
+    public static $ks_matches    = array();
 
     /** @var string $ksession - holds the kaltura session string */
     public static $ksession = '';
@@ -139,6 +140,9 @@ class filter_kaltura extends moodle_text_filter {
             //$search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))\/v\/flash"[^>]*>([^>]*)<\/a>/is';
                 $search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))[^>]*>([^>]*)<\/a>/is';
                 
+				$search2 = '/value="streamerType=rtmp[^"].*?"/is';
+				
+				
 //'/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))(?:[^"])?.*"[^>]?.*>*+(</a>)/is';                
                 
 //            https://kaltura.cc.uregina.ca/index.php/kwidget/wid/_106/uiconf_id/11170249/entry_id/0_xyl5eusc
@@ -151,9 +155,12 @@ class filter_kaltura extends moodle_text_filter {
             //echo '<h1>matches: <pre>'.print_r($lmatches,1).'</pre></h1>';
             // Update the static array of videos, so that later on in the code we can create generate a viewing session for each video
             preg_replace_callback($search, 'update_video_list', $newtext);
+			
+
+            preg_replace_callback($search2, 'update_ks_list', $newtext);
 
             // Exit the function if the video entries array is empty
-            if (empty(self::$videos)) {
+            if (empty(self::$videos) && empty(self::$ks_matches)) {
                 return $text;
             }
             //die(print_r(self::$videos,1));
@@ -183,7 +190,7 @@ class filter_kaltura extends moodle_text_filter {
                 $enabled  = local_kaltura_kaltura_repository_enabled();
                 $category = false;
 
-                if ($enabled) {
+                if ($enabled && !empty(self::$videos)) {
                     // Because the filter() method is called multiple times during a page request (once for every course section or once for every forum post),
                     // the Kaltura repository library file is included only if the repository plug-in is enabled.
                     require_once($CFG->dirroot.'/repository/kaltura/locallib.php');
@@ -192,7 +199,8 @@ class filter_kaltura extends moodle_text_filter {
                    repository_kaltura_add_video_course_reference($connection, self::$courseid, self::$videos);
                 }
 
-                $newtext = preg_replace_callback($search, 'filter_kaltura_callback', $newtext);
+                if (!empty(self::$videos)) $newtext = preg_replace_callback($search, 'filter_kaltura_callback', $newtext);
+                if (!empty(self::$ks_matches)) $newtext = str_replace('%7Bks%7D',self::$ksession,$newtext);
 
             } catch (Exception $exp) {
                 add_to_log(self::$courseid, 'filter_kaltura', 'Error embedding video', '', $exp->getMessage());
@@ -217,6 +225,12 @@ function update_video_list($link) {
     //die(print_r($link,1));
     //echo print_r($link,1);
     filter_kaltura::$videos[] = $link[4];
+}
+
+function update_ks_list($link) {
+    //die(print_r($link,1));
+    //echo print_r($link,1);
+    filter_kaltura::$ks_matches[] = $link;
 }
 
 /**
