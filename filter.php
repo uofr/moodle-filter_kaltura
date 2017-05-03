@@ -27,6 +27,7 @@ class filter_kaltura extends moodle_text_filter {
     /** @var array $videos - an array of videos that have been rendered on a single page request */
     public static $videos    = array();
     public static $ks_matches    = array();
+	public static $videos_other    = array();
 
     /** @var string $ksession - holds the kaltura session string */
     public static $ksession = '';
@@ -175,9 +176,11 @@ class filter_kaltura extends moodle_text_filter {
                 self::$courseid = $PAGE->course->id;
             }
 
+			self::$videos_other = array_merge(self::$videos,self::$ks_matches);
+
             try {
                 // Create the the session for viewing of each video detected
-                self::$ksession = local_kaltura_generate_kaltura_session(self::$videos);
+                self::$ksession = local_kaltura_generate_kaltura_session(self::$videos_other);
 
                 $kaltura    = new kaltura_connection();
                 $connection = $kaltura->get_connection(true, KALTURA_SESSION_LENGTH);
@@ -230,7 +233,13 @@ function update_video_list($link) {
 function update_ks_list($link) {
     //die(print_r($link,1));
     //echo print_r($link,1);
-    filter_kaltura::$ks_matches[] = $link;
+	
+	// get the id from the string
+	$playlist_id = substr($link[0],strpos($link[0],'playlist_id%3D')+14,10);
+	
+	//die(print_r($playlist_id,1));
+	
+    filter_kaltura::$ks_matches[] = $playlist_id;
 }
 
 /**
