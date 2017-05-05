@@ -104,7 +104,7 @@ class filter_kaltura extends moodle_text_filter {
      * @return string - The same text or modified text is returned
      */
     function filter($text, array $options = array()) {
-        global $CFG, $PAGE, $DB;
+        global $CFG, $PAGE, $DB, $USER;
 
         // Check if the local Kaltura plug-in exists.
         if (!self::$kalturalocal) {
@@ -203,7 +203,7 @@ class filter_kaltura extends moodle_text_filter {
                 }
 
                 if (!empty(self::$videos)) $newtext = preg_replace_callback($search, 'filter_kaltura_callback', $newtext);
-                if (!empty(self::$ks_matches)) $newtext = str_replace('%7Bks%7D',self::$ksession,$newtext);
+                if (!empty(self::$ks_matches)) $newtext = str_replace('value="streamerType=rtmp','value="streamerType=rtmp&userId='.$USER->username.'&ks='.self::$ksession,$newtext);
 
             } catch (Exception $exp) {
                 add_to_log(self::$courseid, 'filter_kaltura', 'Error embedding video', '', $exp->getMessage());
