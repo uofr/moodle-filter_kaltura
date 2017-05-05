@@ -203,8 +203,13 @@ class filter_kaltura extends moodle_text_filter {
                 }
 
                 if (!empty(self::$videos)) $newtext = preg_replace_callback($search, 'filter_kaltura_callback', $newtext);
-                if (!empty(self::$ks_matches)) $newtext = str_replace('value="streamerType=rtmp','value="streamerType=rtmp&userId='.$USER->username.'&ks='.self::$ksession,$newtext);
-
+				if (!empty(self::$ks_matches)) {
+                    $newtext = str_replace('%7Bks%7D',self::$ksession,$newtext);
+                    $newtext = str_replace('&{FLAVOR}','&amp;applicationName=UR Courses&amp;playbackContext=1335',$newtext);
+                    $newtext = str_replace('value="streamerType=rtmp','value="userId='.$USER->username.'&ks='.self::$ksession.'&amp;streamerType=rtmp',$newtext);
+                    //$newtext = preg_replace($search2,'value="${1}&applicationName=UR Courses&playbackContext=1335"',$newtext);          
+        		}
+				
             } catch (Exception $exp) {
                 add_to_log(self::$courseid, 'filter_kaltura', 'Error embedding video', '', $exp->getMessage());
             }
