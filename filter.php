@@ -204,9 +204,31 @@ class filter_kaltura extends moodle_text_filter {
 
                 if (!empty(self::$videos)) $newtext = preg_replace_callback($search, 'filter_kaltura_callback', $newtext);
 				if (!empty(self::$ks_matches)) {
-                    $newtext = str_replace('%7Bks%7D',self::$ksession,$newtext);
-                    $newtext = str_replace('&{FLAVOR}','&amp;applicationName=UR Courses&amp;playbackContext=1335',$newtext);
-                    $newtext = str_replace('value="streamerType=rtmp','value="userId='.$USER->username.'&ks='.self::$ksession.'&amp;streamerType=rtmp',$newtext);
+
+					// have to get the KS a different way for now...
+					
+					require_once $CFG->dirroot."/local/kaltura/API/KalturaClient.php";
+					
+					$kconf = new KalturaConfiguration('106');
+					
+					$kconf->serviceUrl = "https://kaltura.cc.uregina.ca/";
+					$kclient = new KalturaClient($kconf);
+					$ksession = $kclient->session->start('9fa48cac385615610d750a5eefbfee33', $USER->username, KalturaSessionType::ADMIN, '106');
+
+					if (!isset($ksession)) {
+						die("Could not establish Kaltura session. Please verify that you are using valid Kaltura partner credentials.");
+					}
+
+					$kclient->setKs($ksession);
+					
+					
+                    $newtext = str_replace('%7Bks%7D',$ksession,$newtext);
+                    if (strpos($newtext,'&{FLAVOR}')>0) {
+                    	$newtext = str_replace('&{FLAVOR}','&amp;applicationName=UR Courses&amp;playbackContext=1335',$newtext);
+                    } else {
+                    	$newtext = str_replace('&amp;{FLAVOR}','&amp;applicationName=UR Courses&amp;playbackContext=1335',$newtext);
+                    }
+                    $newtext = str_replace('value="streamerType=rtmp','value="userId='.$USER->username.'&ks='.$ksession.'&amp;streamerType=rtmp',$newtext);
                     //$newtext = preg_replace($search2,'value="${1}&applicationName=UR Courses&playbackContext=1335"',$newtext);          
         		}
 				
