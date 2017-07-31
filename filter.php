@@ -49,7 +49,29 @@ class filter_kaltura extends moodle_text_filter {
 
     /* @var bool $kalturalocal - indicates if local/kaltura has been installed */
     public static $kalturalocal = false;
+	
+	
+	// mapping from old server IDs to new
+	public static $id_map = array(
+								'0_ihk0wo14'=>'0_74nz2sfq',
+								'0_6694dego'=>'0_8x3v01kd',
 
+								'0_j0mxyikg'=>'0_qam5u7go',
+								'0_yj90giu2'=>'0_tqh2iun0',
+
+								'0_cq1hm53e'=>'0_zmf9u1cu',
+								'0_yimzpbzg'=>'0_31tiwz68',
+								'0_8ge8jhed'=>'0_u5yniaum',
+								'0_m3o90o54'=>'0_tj4ue8yc',
+								
+								'0_jhxmat1o'=>'0_kq2zuu49',
+								'0_vb7dcmqy'=>'0_h15xmty6',
+								'0_27ftnee2'=>'0_ufaq1zhe',
+								'0_5geuil1v'=>'0_qtdichgi'
+								
+							);
+	
+	
     /**
      * This function runs once during a single page request and initialzies
      * some data.  This function also resolves KALDEV-201
@@ -131,6 +153,8 @@ class filter_kaltura extends moodle_text_filter {
             $uri = local_kaltura_get_host();
             $uri = rtrim($uri, '/');
             $uri = str_replace(array('.', '/', 'https'), array('\.', '\/', 'https?'), $uri);
+			
+			$old_uri = 'https?:\/\/kaltura\.cc\.uregina\.ca';
             
             // HACK: cunnintr
             // not matching our urls; change format to match following url pattern
@@ -139,7 +163,7 @@ class filter_kaltura extends moodle_text_filter {
             // Note: Also altered the part that matches content within the link, (?!=<\/a>).*? instead of ([^>]*), 
             // as it originally wouldn't match if the text contained other elements (<span>,<b>, etc)
             //$search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))\/v\/flash"[^>]*>([^>]*)<\/a>/is';
-                $search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))[^>]*>([^>]*)<\/a>/is';
+                $search = '/<a\s[^>]*href="('.$old_uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))[^>]*>([^>]*)<\/a>/is';
                 
 				$search2 = '/value="streamerType=rtmp[^"].*?"/is';
 				
@@ -151,9 +175,14 @@ class filter_kaltura extends moodle_text_filter {
 //            http://kaltura.cc.uregina.ca/index.php/kwidget/wid/_106/uiconf_id/11170236/entry_id/0_6elrlm6s/v/flash#menu_01.mp3
 //            http://kaltura.cc.uregina.ca/index.php/kwidget/wid/_106/uiconf_id/11170236/entry_id/0_wuhydchy
 
-            //$lmatches = array();
-            //preg_match_all($search,$newtext,$lmatches);
-            //echo '<h1>matches: <pre>'.print_r($lmatches,1).'</pre></h1>';
+            
+			
+//for debugging:
+/*			$lmatches = array();
+            preg_match_all($search,$newtext,$lmatches);
+            echo '<h1>matches: <pre>'.print_r($lmatches,1).'</pre></h1>';
+			exit;
+*/			
             // Update the static array of videos, so that later on in the code we can create generate a viewing session for each video
             preg_replace_callback($search, 'update_video_list', $newtext);
 			
@@ -254,7 +283,10 @@ class filter_kaltura extends moodle_text_filter {
 function update_video_list($link) {
     //die(print_r($link,1));
     //echo print_r($link,1);
-    filter_kaltura::$videos[] = $link[4];
+	
+	$outlink = (array_key_exists($link[4],filter_kaltura::$id_map)) ? filter_kaltura::$id_map[$link[4]] : $link[4];
+	
+    filter_kaltura::$videos[] = $outlink;
 }
 
 function update_ks_list($link) {
@@ -279,9 +311,25 @@ function update_ks_list($link) {
  */
 function filter_kaltura_callback($link) {
     global $CFG, $PAGE;
+	
+	/*
+	<p>
+	    <a href="https://kaltura.cc.uregina.ca/index.php/kwidget/wid/_106/uiconf_id/11170249/entry_id/0_5geuil1v/v/flash">Topic 2 -clip 3.mp4</a>
+	</p>
+	*/
+	//die(print_r($link[4],1));
+	
+	$outlink = (array_key_exists($link[4],filter_kaltura::$id_map)) ? filter_kaltura::$id_map[$link[4]] : $link[4];
 
-    $entry_obj = local_kaltura_get_ready_entry_object($link[4], false);
-
+	//die('<pre>'.print_r(filter_kaltura::$id_map,1).'</pre>'.$link[4].'||'.$outlink);
+	
+	
+    $entry_obj = local_kaltura_get_ready_entry_object($outlink, false);
+	
+	//die('<pre>'.print_r($entry_obj,1).'</pre>');
+	
+	//die('<pre>'.print_r($entry_obj,1).'________'."\n".print_r(filter_kaltura::$player,1).'</pre>');
+	
     if (empty($entry_obj)) {
         return get_string('unable', 'filter_kaltura');
     }
@@ -300,7 +348,8 @@ function filter_kaltura_callback($link) {
 
     filter_kaltura::$playernumber++;
     $uid = filter_kaltura::$playernumber . '_' . mt_rand();
-
+	
+	
     if (!filter_kaltura::$mobilethemeused) {
         $markup  = local_kaltura_get_kdp_code($entry_obj, filter_kaltura::$player, filter_kaltura::$courseid, filter_kaltura::$ksession/*, $uid*/);
     } else {
