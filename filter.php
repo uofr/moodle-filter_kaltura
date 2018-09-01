@@ -257,11 +257,11 @@ public static $id_map = array();
 					
 					require_once $CFG->dirroot."/local/kaltura/API/KalturaClient.php";
 					
-					$kconf = new KalturaConfiguration('106');
+					$kconf = new KalturaConfiguration('104');
 					
-					$kconf->serviceUrl = "https://kaltura.cc.uregina.ca/";
+					$kconf->serviceUrl = "https://urcourses-video.uregina.ca/";
 					$kclient = new KalturaClient($kconf);
-					$ksession = $kclient->session->start('9fa48cac385615610d750a5eefbfee33', $USER->username, KalturaSessionType::ADMIN, '106');
+					$ksession = $kclient->session->start('5797ccb7ce30a75213d7e049419663f5', $USER->username, KalturaSessionType::ADMIN, '104');
 
 					if (!isset($ksession)) {
 						die("Could not establish Kaltura session. Please verify that you are using valid Kaltura partner credentials.");
