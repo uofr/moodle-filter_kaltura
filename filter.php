@@ -27,6 +27,7 @@ class filter_kaltura extends moodle_text_filter {
     /** @var array $videos - an array of videos that have been rendered on a single page request */
     public static $videos    = array();
     public static $ks_matches    = array();
+    public static $plist_matches    = array();
 	public static $videos_other    = array();
 
     /** @var string $ksession - holds the kaltura session string */
@@ -157,8 +158,8 @@ public static $id_map = array();
             return $text;
         }
 
-        if (stripos($text, '</a>') === false) {
-            // performance shortcut - all regexes bellow end with the </a> tag, if not present nothing can match
+        if (stripos($text, '</a>') === false && stripos($text, '</script>') === false) {
+            // performance shortcut - all regexes bellow end with the </a> or </script> tag, if not present nothing can match
             return $text;
         }
 
@@ -178,12 +179,16 @@ public static $id_map = array();
             // http://kaltura.cc.uregina.ca/index.php/kwidget/wid/_106/uiconf_id/11170236/entry_id/0_k0s5l05s
             // old value: $search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))\/v\/flash"[^>]*>([^>]*)<\/a>/is';
             // Note: Also altered the part that matches content within the link, (?!=<\/a>).*? instead of ([^>]*), 
-            // as it originally wouldn't match if the text contained other elements (<span>,<b>, etc)
+            // as it originally would not match if the text contained other elements (<span>,<b>, etc)
             //$search = '/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))\/v\/flash"[^>]*>([^>]*)<\/a>/is';
                 $search = '/<a\s[^>]*href="('.$old_uri.'|'.$new_uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))[^>]*>([^>]*)<\/a>/is';
                 //$searchnew = '/<a\s[^>]*href="('.$new_uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))[^>]*>([^>]*)<\/a>/is';
                 
 				$search2 = '/value="streamerType=rtmp[^"].*?"/is';
+				
+				$search3 = '/flashvars\[playlistAPI\.kpl0Id\]=[^"].*?"/is';
+				
+				
 				
 				
 //'/<a\s[^>]*href="('.$uri.')\/index\.php\/kwidget\/wid\/_([0-9]+)\/uiconf_id\/([0-9]+)\/entry_id\/([\d]+_([a-z0-9]+))(?:[^"])?.*"[^>]?.*>*+(</a>)/is';                
@@ -197,7 +202,7 @@ public static $id_map = array();
 			
 //for debugging:
 /*			$lmatches = array();
-            preg_match_all($search,$newtext,$lmatches);
+            preg_match_all($search3,$newtext,$lmatches);
             echo '<h1>matches: <pre>'.print_r($lmatches,1).'</pre></h1>';
 			exit;
 */			
@@ -207,9 +212,11 @@ public static $id_map = array();
             //preg_replace_callback($searchnew, 'update_video_list', $newtext);
 
             preg_replace_callback($search2, 'update_ks_list', $newtext);
+						
+            preg_replace_callback($search3, 'update_ks_playlist', $newtext);
 
             // Exit the function if the video entries array is empty
-            if (empty(self::$videos) && empty(self::$ks_matches)) {
+            if (empty(self::$videos) && empty(self::$ks_matches) && empty(self::$plist_matches)) {
                 return $text;
             }
             //die(print_r(self::$videos,1));
@@ -251,34 +258,45 @@ public static $id_map = array();
                 }
 
                 if (!empty(self::$videos)) $newtext = preg_replace_callback($search, 'filter_kaltura_callback', $newtext);
-				if (!empty(self::$ks_matches)) {
+								
+								
+								if (!empty(self::$ks_matches)||!empty(self::$plist_matches)) {
 
-					// have to get the KS a different way for now...
+									// have to get the KS a different way for now...
 					
-					require_once $CFG->dirroot."/local/kaltura/API/KalturaClient.php";
+									require_once $CFG->dirroot."/local/kaltura/API/KalturaClient.php";
 					
-					$kconf = new KalturaConfiguration('104');
+									$kconf = new KalturaConfiguration('104');
 					
-					$kconf->serviceUrl = "https://urcourses-video.uregina.ca/";
-					$kclient = new KalturaClient($kconf);
-					$ksession = $kclient->session->start('5797ccb7ce30a75213d7e049419663f5', $USER->username, KalturaSessionType::ADMIN, '104');
+									$kconf->serviceUrl = "https://urcourses-video.uregina.ca/";
+									$kclient = new KalturaClient($kconf);
+									$ksession = $kclient->session->start('5797ccb7ce30a75213d7e049419663f5', $USER->username, KalturaSessionType::ADMIN, '104');
 
-					if (!isset($ksession)) {
-						die("Could not establish Kaltura session. Please verify that you are using valid Kaltura partner credentials.");
-					}
+									if (!isset($ksession)) {
+										die("Could not establish Kaltura session. Please verify that you are using valid Kaltura partner credentials.");
+									}
 
-					$kclient->setKs($ksession);
+									$kclient->setKs($ksession);
 					
+									if (!empty(self::$ks_matches)) {
 					
-                    $newtext = str_replace('%7Bks%7D',$ksession,$newtext);
-                    if (strpos($newtext,'&{FLAVOR}')>0) {
-                    	$newtext = str_replace('&{FLAVOR}','&amp;applicationName=UR Courses&amp;playbackContext=1335',$newtext);
-                    } else {
-                    	$newtext = str_replace('&amp;{FLAVOR}','&amp;applicationName=UR Courses&amp;playbackContext=1335',$newtext);
-                    }
-                    $newtext = str_replace('value="streamerType=rtmp','value="userId='.$USER->username.'&ks='.$ksession.'&amp;streamerType=rtmp',$newtext);
-                    //$newtext = preg_replace($search2,'value="${1}&applicationName=UR Courses&playbackContext=1335"',$newtext);          
-        		}
+				                    $newtext = str_replace('%7Bks%7D',$ksession,$newtext);
+				                    if (strpos($newtext,'&{FLAVOR}')>0) {
+				                    	$newtext = str_replace('&{FLAVOR}','&amp;applicationName=UR Courses&amp;playbackContext=1335',$newtext);
+				                    } else {
+				                    	$newtext = str_replace('&amp;{FLAVOR}','&amp;applicationName=UR Courses&amp;playbackContext=1335',$newtext);
+				                    }
+				                    $newtext = str_replace('value="streamerType=rtmp','value="userId='.$USER->username.'&ks='.$ksession.'&amp;streamerType=rtmp',$newtext);
+				                    //$newtext = preg_replace($search2,'value="${1}&applicationName=UR Courses&playbackContext=1335"',$newtext);          
+				        		}
+										
+										if (!empty(self::$plist_matches)) {
+													
+	                    $newtext = str_replace('flashvars[playlistAPI.kpl0Id]=','flashvars[userId]='.$USER->username.'&ks='.$ksession.'&'.'flashvars[playlistAPI.kpl0Id]=',$newtext);
+	                    //$newtext = preg_replace($search2,'value="${1}&applicationName=UR Courses&playbackContext=1335"',$newtext);
+													
+										}
+									}
 				
             } catch (Exception $exp) {
                 add_to_log(self::$courseid, 'filter_kaltura', 'Error embedding video', '', $exp->getMessage());
@@ -318,6 +336,18 @@ function update_ks_list($link) {
 	//die(print_r($playlist_id,1));
 	
     filter_kaltura::$ks_matches[] = $playlist_id;
+}
+
+function update_ks_playlist($link) {
+    //die(print_r($link,1));
+    //echo print_r($link,1);
+	
+	// get the id from the string
+	$playlist_id = substr($link[0],strpos($link[0],'=')+1,10);
+	
+	//die(print_r($playlist_id,1));
+	
+    filter_kaltura::$plist_matches[] = $playlist_id;
 }
 
 /**
